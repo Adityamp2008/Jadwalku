@@ -1,55 +1,52 @@
-const CACHE_NAME = 'jadwal-pelajaran-cache-v1';
+// sw.js
+const CACHE_NAME = 'jadwal-pelajaran-cache-v2'; // ganti versi tiap update
 const urlsToCache = [
   '/',
   '/index.html',
-  'https://cdn.tailwindcss.com',
+  '/manifest.json',
   '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/icons/icon-512x512.png',
+  // Lebih baik pakai file tailwind lokal, tapi kalau tetap CDN:
+  'https://cdn.tailwindcss.com',
 ];
 
-// Event: Install
-// Saat service worker di-install, buka cache dan tambahkan file-file utama
+// Install - simpan semua file di cache
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+      .then(cache => cache.addAll(urlsToCache))
   );
+  self.skipWaiting();
 });
 
-// Event: Fetch
-// Saat aplikasi meminta resource (seperti file atau data),
-// service worker akan mencegatnya dan menyajikan dari cache jika ada.
-// Jika tidak ada di cache, baru akan mengambil dari network.
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
-});
-
-// Event: Activate
-// Membersihkan cache lama jika ada versi cache yang baru.
+// Activate - hapus cache lama kalau ada versi baru
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
-        })
+        cacheNames
+          .filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
       );
+    })
+  );
+  self.clients.claim();
+});
+
+// Fetch - ambil dari cache dulu, kalau nggak ada baru fetch
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(cachedResponse => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      return fetch(event.request).catch(() => {
+        // Fallback khusus untuk permintaan navigasi (misal buka halaman baru)
+        if (event.request.mode === 'navigate') {
+          return caches.match('/index.html');
+        }
+      });
     })
   );
 });

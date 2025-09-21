@@ -7,7 +7,7 @@ const urlsToCache = [
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   // Lebih baik pakai file tailwind lokal, tapi kalau tetap CDN:
-  'https://cdn.tailwindcss.com',
+  '/style.css',
 ];
 
 // Install - simpan semua file di cache
